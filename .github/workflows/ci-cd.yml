@@ -1,0 +1,43 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/DevPracticum-backend
+  FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/DevPracticum-frontend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout репозитория
+        uses: actions/checkout@v3
+
+      - name: 🔐 Логин в Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: 🛠️ Сборка backend
+        run: docker build -t $BACKEND_IMAGE ./backend
+
+      - name: 🛠️ Сборка frontend
+        run: docker build -t $FRONTEND_IMAGE ./frontend
+
+      - name: ☁️ Push backend
+        run: docker push $BACKEND_IMAGE
+
+      - name: ☁️ Push frontend
+        run: docker push $FRONTEND_IMAGE
+
+  deploy-local:
+    name: 🚀 Deploy (Local Windows)
+    runs-on: self-hosted
+    needs: build-and-push  # ⚠️ ждать сборку и пуш
+    steps:
+      - name: 📦 Обновление контейнеров
+        run: |
+          docker compose down
+          docker compose pull
+          docker compose up -d

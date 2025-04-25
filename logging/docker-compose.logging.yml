@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node                 # Без кластера
+      - bootstrap.memory_lock=true                 # Фиксация памяти для производительности
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m     # Ограничение памяти JVM
+      - plugins.security.disabled=true             # Отключаем авторизацию
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"  # API OpenSearch
+    networks:
+      - logging-net
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"  # UI OpenSearch Dashboards
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+    depends_on:
+      - opensearch
+    networks:
+      - logging-net
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.2
+    container_name: filebeat
+    user: root                                  # Filebeat работает как root, чтобы читать системные логи
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./filebeat/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro   # Нужно, если хочешь собирать stdout из docker контейнеров
+      - /var/log:/var/log:ro                                      # Доступ к log-файлам хоста или тома
+      - nginx-logs:/logs/nginx:ro   # проброска vulume для FileBeat
+      - postgres-logs:/logs/postgresql:ro
+    entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint.sh"]
+    depends_on:
+      - opensearch
+    networks:
+      - logging-net
+
+volumes:
+  opensearch-data:
+  nginx-logs:
+  postgres-logs:
+
+networks:
+  logging-net:

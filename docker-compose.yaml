@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  backend:
+    image: vallyka/DevpPacticum-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: DEBUG
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: taskdb
+      DB_USER: postgres
+      DB_PASS: 123456
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend:
+    image: vallyka/DevPracticum-frontend:latest
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  db:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_DB: taskdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/conf/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - postgres-logs:/var/log/postgresql
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  nginx-logs:
+  postgres-logs:

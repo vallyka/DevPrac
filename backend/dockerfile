@@ -1,0 +1,22 @@
+# backend/Dockerfile
+
+# Используем официальный образ Python
+FROM python:3.10-slim
+
+# Устанавливаем рабочую директорию внутри контейнера
+WORKDIR /app
+
+# Копируем файл зависимостей
+COPY requirements.txt .
+
+# Устанавливаем зависимости через pip
+RUN pip install -r requirements.txt
+
+# Копируем всё остальное внутрь контейнера
+COPY . .
+
+# Создаём лог-папку
+RUN mkdir -p /var/log/backend
+
+# Команда, которая запустит сервер FastAPI
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
